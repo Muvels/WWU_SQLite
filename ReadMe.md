@@ -20,6 +20,6 @@ codesign --force --deep --sign - "/Users/matteomarolt/Developer/Software Praktik
 
 ### Windows compilation
 ```
-We need to add the creation of a dll here.
+cl /LD /Fo"C:/Users/Marol/Downloads/sopra/SQLite/" /Fe"C:/Users/Marol/Downloads/sopra/SQLite/sqlite_native.dll" /I "C:/Users/Marol/Downloads/sopra/jdk-21.0.6+7/include" /I "C:/Users/Marol/Downloads/sopra/jdk-21.0.6+7/include/win32" /I "C:/Users/Marol/Downloads/sqlite-amalgamation-3490000" "C:/Users/Marol/Downloads/sopra/SQLite/sqlite_native.c" /link /out:"C:/Users/Marol/Downloads/sopra/SQLite/libsqlite_native.dll" /LIBPATH:"C:/Users/Marol/Downloads/sqlite-dll-win-x64-3490000" sqlite3.lib
 ```
 
