@@ -35,6 +35,8 @@ I designed the Project, in a way that you dont need to compile the soruce by you
 
 ### Native Library Compilation
 
+To build the Project, i use the jdk-21.0.6+7 all the distros of it can be found [here](https://github.com/adoptium/temurin21-binaries/releases/tag/jdk-21.0.6%2B7)
+
 #### macOS
 
 Compile the native library with:
@@ -49,11 +51,27 @@ gcc -shared -o libsqlite_native.dylib -I"./jdk-21.0.6+7/Contents/Home/include" -
 > codesign --force --deep --sign - "/path/to/libsqlite_native.dylib"
 > ```
 
+### Linux
+
+Build the SQLite Library with the C source code as an amalgamation
+
+Here is an example for ArchLinux with x64 architecture:
+```bash
+gcc -shared -fPIC -o libsqlite_native_musl_x64.so -I"./jdk-21.0.6+7/include" -I"./jdk-21.0.6+7/include/linux/" "./WWU_SQLite-main/c-src/sqlite_native.c" ./sqlite-amalgamation-3490100/libsqlite3.a -lpthread -ldl
+```
+
+
 #### Windows
 
+Windows does not come with an c Compiler, so i used x64 Native Tools Command Prompt for VS 2022
 For Windows, create a DLL from the C source. 
+Build the SQLite Library with the C source code as an amalgamation
 
 Since you need to build the SQLite Project on Windows, we provide the latest `.dll` in Releases
+
+```bash
+cl /LD /Fe:sqlite_native.dll /I "C:/Users/Marol/Downloads/sopra/jdk-21.0.6+7/include" /I "C:/Users/Marol/Downloads/sopra/jdk-21.0.6+7/include/win32" /I "C:/Users/Marol/Downloads/sqlite-amalgamation-3490000" "C:/Users/Marol/Downloads/sqlite-amalgamation-3490000/sqlite3.c" "C:/Users/Marol/Downloads/sopra/SQLite/sqlite_native.c" /link /out:"C:/Users/Marol/Downloads/sopra/SQLite/libsqlite_native.dll"
+```
 
 ### Java Integration
 
