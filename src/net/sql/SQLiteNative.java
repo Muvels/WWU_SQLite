@@ -25,23 +25,8 @@ public class SQLiteNative {
      */
     private static void loadNativeLibrary() throws IOException {
         // Determine OS name in lowercase for easier matching.
-        String osName = System.getProperty("os.name").toLowerCase();
-        String libraryResourcePath;
-
-        if (osName.contains("win")) {
-            // Windows native library
-            libraryResourcePath = "/c-side/libsqlite_native.dll";
-        } else if (osName.contains("mac")) {
-            // macOS native library
-            libraryResourcePath = "/c-side/libsqlite_native.dylib";
-        } else if (osName.contains("nix") || osName.contains("nux") || osName.contains("aix")) {
-            // Linux/Unix native library
-            libraryResourcePath = "/c-side/libsqlite_native.so";
-        } else {
-            throw new UnsupportedOperationException("Unsupported operating system: " + osName);
-        }
-
-        URL resourceUrl = SQLiteNative.class.getResource("/c-side/libsqlite_native.dylib");
+        String libraryResourcePath = NativeLibraryLoader.getLibraryResourcePath();
+        URL resourceUrl = SQLiteNative.class.getResource(libraryResourcePath);
         System.out.println("Resource URL: " + resourceUrl);
 
         // Extract the library from the JAR
