@@ -53,6 +53,10 @@ gcc -shared -o libsqlite_native.dylib -I"./jdk-21.0.6+7/Contents/Home/include" -
 
 For Windows, create a DLL from the C source. 
 
+```bash
+cl /LD /Fe:sqlite_native.dll /I "C:/Users/Marol/Downloads/sopra/jdk-21.0.6+7/include" /I "C:/Users/Marol/Downloads/sopra/jdk-21.0.6+7/include/win32" /I "C:/Users/Marol/Downloads/sqlite-amalgamation-3490000" "C:/Users/Marol/Downloads/sqlite-amalgamation-3490000/sqlite3.c" "C:/Users/Marol/Downloads/sopra/WWU_SQLite/c-src/sqlite_native.c"" /link /out:"C:/Users/Marol/Downloads/sopra/SQLite/libsqlite_native.dll"
+```
+
 Since you need to build the SQLite Project on Windows, we provide the latest `.dll` in Releases
 
 ### Java Integration
