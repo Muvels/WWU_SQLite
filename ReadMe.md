@@ -120,6 +120,14 @@ class YourDataModel {
     private long someLong;
     private byte[] data;
 
+    public YourDataModel(int id, String name) {
+    	this.name = name;
+    	this.id = id;
+    }
+    
+    // This is required, if you use a constructor with parameters, so my db_client can create a class
+    public YourDataModel() {}
+
     public void setId(int id) {
         this.id = id;
     }
