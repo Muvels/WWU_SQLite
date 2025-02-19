@@ -61,35 +61,158 @@ The Java classes are designed to automatically extract and load the native libra
 
 ## Usage Example
 
-Below is a sample usage demonstrating how to open a database, execute SQL statements, and process query results:
+### Mapped Query Results with `executeQueryWithMapping`
+
+I introduced a unique new feature to replace json formating in my integration: the **`executeQueryWithMapping`** function! This powerful addition automatically converts rows returned from an SQL query into fully populated Java objects. Imagine being able to query your SQLite database and instantly receive a list of your custom model objects—no manual parsing required!
+
+#### How It Works
+
+- **Automatic Object Mapping:**  
+  Each row from your query is dynamically mapped to an instance of a specified Java class (e.g., `YourDataModel`), using setter methods that follow a simple naming convention (e.g., `setName`, `setAge`, etc.).
+
+- **Type-Safe Conversion:**  
+  My implementation supports multiple data types—integers, doubles, longs, byte arrays (BLOBs), and strings. It intelligently selects the appropriate setter based on the SQLite column type, ensuring that your data is converted safely and accurately.
+
+- **Graceful Handling of Missing Setters:**  
+  If your model class doesn't define a setter for a particular column, the mapping simply skips that column without throwing an error. This means you can design your classes with only the properties you need.
+
+#### Example Usage
+
+Here's a quick example of how you can use the new feature:
 
 ```java
-import net.sql.SQLiteDatabase;
-import net.sql.SQLiteStatement;
+ArrayList<YourDataModel> results = db.executeQueryWithMapping(
+        "SELECT * FROM YourDataModel",
+        null,
+        YourDataModel.class
+);
+for (YourDataModel model : results) {
+    System.out.println(model);
+}
 
-public class Main {
+```
+
+In this snippet, every row from the YourDataModel table is mapped into a YourDataModel object. The result is a clean, type-safe list of objects that you can work with immediately.
+
+Benefits
+  * Simplified Data Handling: No more tedious result parsing code—just query, map, and use!
+  * Cleaner Code: Your data access layer becomes more expressive and easier to maintain.
+  * Reduced Error Risk: Automatic type conversion minimizes the risk of runtime errors from manual parsing.
+
+#### Below is a sample usage demonstrating how to open a database, execute SQL statements, and process query results:
+
+
+```java
+package net.sql;
+
+import java.util.ArrayList;
+
+class YourDataModel {
+    private int id;
+    private String name;
+    private String description;
+    private int age;
+    private double salary;
+    private long someLong;
+    private byte[] data;
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public void setAge(int age) {
+        this.age = age;
+    }
+
+    public void setSalary(double salary) {
+        this.salary = salary;
+    }
+
+    public void setSomeLong(long someLong) {
+        this.someLong = someLong;
+    }
+
+    public void setData(byte[] data) {
+        this.data = data;
+    }
+
+    @Override
+    public String toString() {
+        // For demonstration, we convert the blob (data) to a String
+        String blobStr = (data != null) ? new String(data) : "null";
+        return "YourDataModel{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", description='" + description + '\'' +
+                ", age=" + age +
+                ", salary=" + salary +
+                ", someLong=" + someLong +
+                ", data=" + blobStr +
+                '}';
+    }
+}
+
+public class Example {
     public static void main(String[] args) {
-        try (SQLiteDatabase db = new SQLiteDatabase("example.db")) {
-            // Create a table if it doesn't exist
+        try (SQLiteDatabase db = new SQLiteDatabase("database")) {
+            // Create and insert into a simple users table for testing
             db.execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT);");
-
-            // Insert data into the table
             db.execute("INSERT INTO users (name) VALUES ('Alice');");
             db.execute("INSERT INTO users (name) VALUES ('Bob');");
 
-            // Query the database
-            try (SQLiteStatement stmt = db.prepareStatement("SELECT id, name FROM users;")) {
+            // Create the YourDataModel table with various column types
+            db.execute("CREATE TABLE IF NOT EXISTS YourDataModel (" +
+                       "id INTEGER PRIMARY KEY, " +
+                       "name TEXT, " +
+                       "description TEXT, " +
+                       "age INTEGER, " +
+                       "salary REAL, " +
+                       "someLong INTEGER, " +
+                       "data BLOB" +
+                       ");");
+            // Insert two rows with values for all columns.
+            // For the BLOB column, we use a hexadecimal literal (e.g., X'48656C6C6F' equals "Hello").
+            db.execute("INSERT INTO YourDataModel (name, description, age, salary, someLong, data) VALUES " +
+                       "('Alice', 'Software Developer', 48, 1234.56, 987654321, X'48656C6C6F');");
+            db.execute("INSERT INTO YourDataModel (name, description, age, salary, someLong, data) VALUES " +
+                       "('Bob', 'Data Analyst', 300, 6543.21, 123456789, X'776F726C64');");
+
+            // Test the users table using a prepared statement
+            try (SQLiteStatement stmt = db.prepareStatement("SELECT * FROM users;")) {
                 while (stmt.next()) {
                     int id = stmt.getInt("id");
                     String name = stmt.getString("name");
-                    System.out.println("User: " + id + " - " + name);
+                    System.out.println("User: id=" + id + ", name=" + name + " Type of name: " + stmt.getType("name"));
                 }
             }
+            
+            System.out.println("Experimental Stuff now");
+            
+            ArrayList<YourDataModel> results = db.executeQueryWithMapping(
+                    "SELECT * FROM YourDataModel",
+                    null,
+                    YourDataModel.class
+                );
+            
+            for (YourDataModel model : results) {
+                System.out.println(model);
+            }
+            
+            
         } catch (RuntimeException e) {
             e.printStackTrace();
         }
     }
 }
+
 ```
 
 ## Directory Structure
