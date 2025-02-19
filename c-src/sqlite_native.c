@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <sqlite3.h>
 #include <string.h>
+#include <ctype.h>
+
 // Global statement pointer to track active query results
 sqlite3_stmt *global_stmt = NULL;
 // ========== <Helper functions> ==========
@@ -222,4 +224,155 @@ JNIEXPORT void JNICALL Java_net_sql_SQLiteNative_cancelQuery(JNIEnv *env, jobjec
         global_stmt = NULL;
     }
 }
+
+// Function to execute an SQL statement and map the results to Java objects
+JNIEXPORT jobject JNICALL Java_net_sql_SQLiteNative_executeQueryWithMapping(
+    JNIEnv *env, jobject obj, jlong dbPtr, jstring query, jobject param, jclass templateClass) {
+
+    const char *sql = (*env)->GetStringUTFChars(env, query, 0);
+    sqlite3_stmt *stmt;
+    int rc = sqlite3_prepare_v2((sqlite3 *)dbPtr, sql, -1, &stmt, 0);
+    (*env)->ReleaseStringUTFChars(env, query, sql);
+
+    if (rc != SQLITE_OK) {
+        return NULL;
+    }
+
+    // Create an ArrayList to hold the results
+    jclass arrayListClass = (*env)->FindClass(env, "java/util/ArrayList");
+    jmethodID arrayListInit = (*env)->GetMethodID(env, arrayListClass, "<init>", "()V");
+    jobject resultList = (*env)->NewObject(env, arrayListClass, arrayListInit);
+    jmethodID arrayListAdd = (*env)->GetMethodID(env, arrayListClass, "add", "(Ljava/lang/Object;)Z");
+
+    // Get the default constructor for the template class.
+    jmethodID constructor = (*env)->GetMethodID(env, templateClass, "<init>", "()V");
+
+    // Process each row of the result set
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        jobject newObject = (*env)->NewObject(env, templateClass, constructor);
+        int columnCount = sqlite3_column_count(stmt);
+
+        // Process each column
+        for (int i = 0; i < columnCount; i++) {
+            const char *columnName = sqlite3_column_name(stmt, i);
+
+            // Convert column name to Java-style setter name, e.g. "id" becomes "setId"
+            char propertyName[128];
+            snprintf(propertyName, sizeof(propertyName), "set%c%s", toupper(columnName[0]), columnName + 1);
+
+            // Determine the SQLite column type
+            int colType = sqlite3_column_type(stmt, i);
+            jmethodID setter = NULL;
+            int setterType = 0; // 1: int, 2: long, 3: double, 4: string, 5: blob
+
+            switch (colType) {
+                case SQLITE_INTEGER:
+                    setter = (*env)->GetMethodID(env, templateClass, propertyName, "(I)V");
+                    if (setter) {
+                        setterType = 1;
+                    } else {
+                        if ((*env)->ExceptionCheck(env)) { (*env)->ExceptionClear(env); }
+                        setter = (*env)->GetMethodID(env, templateClass, propertyName, "(J)V");
+                        if (setter) {
+                            setterType = 2;
+                        } else {
+                            if ((*env)->ExceptionCheck(env)) { (*env)->ExceptionClear(env); }
+                            setter = (*env)->GetMethodID(env, templateClass, propertyName, "(Ljava/lang/String;)V");
+                            if (setter) {
+                                setterType = 4;
+                            } else {
+                                if ((*env)->ExceptionCheck(env)) { (*env)->ExceptionClear(env); }
+                            }
+                        }
+                    }
+                    break;
+                case SQLITE_FLOAT:
+                    setter = (*env)->GetMethodID(env, templateClass, propertyName, "(D)V");
+                    if (setter) {
+                        setterType = 3;
+                    } else {
+                        if ((*env)->ExceptionCheck(env)) { (*env)->ExceptionClear(env); }
+                        setter = (*env)->GetMethodID(env, templateClass, propertyName, "(Ljava/lang/String;)V");
+                        if (setter) {
+                            setterType = 4;
+                        } else {
+                            if ((*env)->ExceptionCheck(env)) { (*env)->ExceptionClear(env); }
+                        }
+                    }
+                    break;
+                case SQLITE_TEXT:
+                    setter = (*env)->GetMethodID(env, templateClass, propertyName, "(Ljava/lang/String;)V");
+                    if (setter) {
+                        setterType = 4;
+                    } else {
+                        if ((*env)->ExceptionCheck(env)) { (*env)->ExceptionClear(env); }
+                    }
+                    break;
+                case SQLITE_BLOB:
+                    setter = (*env)->GetMethodID(env, templateClass, propertyName, "([B)V");
+                    if (setter) {
+                        setterType = 5;
+                    } else {
+                        if ((*env)->ExceptionCheck(env)) { (*env)->ExceptionClear(env); }
+                        setter = (*env)->GetMethodID(env, templateClass, propertyName, "(Ljava/lang/String;)V");
+                        if (setter) {
+                            setterType = 4;
+                        } else {
+                            if ((*env)->ExceptionCheck(env)) { (*env)->ExceptionClear(env); }
+                        }
+                    }
+                    break;
+                default:
+                    setter = NULL;
+                    break;
+            }
+
+            // If a suitable setter was found, call it with the appropriate converted value.
+            if (setter) {
+                switch (setterType) {
+                    case 1: {
+                        int value = sqlite3_column_int(stmt, i);
+                        (*env)->CallVoidMethod(env, newObject, setter, value);
+                        break;
+                    }
+                    case 2: {
+                        jlong value = sqlite3_column_int64(stmt, i);
+                        (*env)->CallVoidMethod(env, newObject, setter, value);
+                        break;
+                    }
+                    case 3: {
+                        double value = sqlite3_column_double(stmt, i);
+                        (*env)->CallVoidMethod(env, newObject, setter, value);
+                        break;
+                    }
+                    case 4: {
+                        const char *textValue = (const char *)sqlite3_column_text(stmt, i);
+                        jstring valueStr = (*env)->NewStringUTF(env, textValue ? textValue : "NULL");
+                        (*env)->CallVoidMethod(env, newObject, setter, valueStr);
+                        (*env)->DeleteLocalRef(env, valueStr);
+                        break;
+                    }
+                    case 5: {
+                        int blobSize = sqlite3_column_bytes(stmt, i);
+                        const void *blobData = sqlite3_column_blob(stmt, i);
+                        jbyteArray byteArray = (*env)->NewByteArray(env, blobSize);
+                        if (byteArray && blobData) {
+                            (*env)->SetByteArrayRegion(env, byteArray, 0, blobSize, (const jbyte *)blobData);
+                        }
+                        (*env)->CallVoidMethod(env, newObject, setter, byteArray);
+                        (*env)->DeleteLocalRef(env, byteArray);
+                        break;
+                    }
+                }
+            }
+        }
+
+        (*env)->CallBooleanMethod(env, resultList, arrayListAdd, newObject);
+        (*env)->DeleteLocalRef(env, newObject);
+    }
+
+    sqlite3_finalize(stmt);
+    return resultList;
+}
+
 // ========== </JAVA specific DML Modell functions> ==========

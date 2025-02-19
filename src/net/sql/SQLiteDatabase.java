@@ -1,5 +1,7 @@
 package net.sql;
 
+import java.util.ArrayList;
+
 /**
  * A Java wrapper for the native SQLite interface.
  */
@@ -47,6 +49,27 @@ public class SQLiteDatabase implements AutoCloseable {
             throw new RuntimeException("Failed to start query: " + sql);
         }
         return new SQLiteStatement(nativeSql);
+    }
+
+    /**
+     * Executes a SQL query and maps the result set to a list of objects of the specified type.
+     * This method uses the native mapping functionality which converts each row into an instance
+     * of the provided template class, using setters for the appropriate types (int, double, long,
+     * byte[] and String).
+     *
+     * @param sql           the SQL query to execute.
+     * @param param         an optional parameter for the query (can be null).
+     * @param templateClass the class of the object to map each row to.
+     * @param <T>           the type of the object.
+     * @return an {@link ArrayList} of objects of type T containing the mapped results.
+     * @throws RuntimeException if the query mapping fails.
+     */
+    public <T> ArrayList<T> executeQueryWithMapping(String sql, Object param, Class<T> templateClass) {
+        ArrayList<T> results = nativeSql.executeQueryWithMapping(dbPtr, sql, param, templateClass);
+        if (results == null) {
+            throw new RuntimeException("Failed to execute query with mapping: " + sql);
+        }
+        return results;
     }
 
     /**

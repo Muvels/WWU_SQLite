@@ -6,6 +6,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.util.ArrayList;
 
 public class SQLiteNative {
     static {
@@ -94,6 +95,25 @@ public class SQLiteNative {
      * @return a JSON formatted string representing the query result, or an error message if the query fails.
      */
     public native String queryDatabase(long dbPtr, String query, int options);
+
+    /**
+     * Executes an SQL query with the provided parameters and maps the result set to a list of objects
+     * of the specified class type. The method dynamically matches database column names to Java class
+     * properties based on a naming convention.
+     *
+     * @param dbPtr        A pointer to the SQLite database instance.
+     * @param query        The SQL query string to be executed.
+     * @param param        An optional parameter for the query (currently unused, can be null).
+     * @param templateClass The Java class type to which the query results should be mapped.
+     *                      The class must have setter methods following the naming convention:
+     *                      {@code set<PropertyName>} for each matching database column.
+     * @param <T>          The generic type representing the class type of the objects in the result list.
+     * @return An {@code ArrayList<T>} containing instances of {@code templateClass}, populated with
+     *         values from the database query result. Returns an empty list if no results are found
+     *         or {@code null} if an error occurs.
+     */
+    public native <T> ArrayList<T> executeQueryWithMapping(long dbPtr, String query, Object param, Class<T> templateClass);
+
 
     /**
      * Prepares and starts executing the specified SQL query.
