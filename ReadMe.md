@@ -1,5 +1,5 @@
 # SQLite JNI Integration for Java
-
+Developed by me for the WWU SoPra2025 project, this integration serves as a lightweight alternative to using JDBC for SQLite in Java.
 ## Overview
 
 This project provides a lightweight Java wrapper for the native SQLite interface using JNI (Java Native Interface). It enables Java applications to work directly with SQLite databases without relying on external libraries or the standard JDBC driver.
@@ -235,7 +235,3 @@ public class Example {
 ├── resources     // `.dylib`, `.dll` and `.so` for the project.
 └── c-src        // JNI C implementation.
 ```
-
-## Acknowledgments
-
-Developed by me for the WWU SoPra2025 project, this integration serves as a lightweight alternative to using JDBC for SQLite in Java.
